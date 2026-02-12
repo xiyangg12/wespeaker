@@ -3,6 +3,9 @@ from pathlib import Path
 import torch
 import pandas as pd
 from wespeaker.cli.speaker import Speaker
+import librosa
+import soundfile as sf
+import numpy as np
 
 MODEL_NAME_LIST = [
     'cnceleb_resnet34',
@@ -89,7 +92,9 @@ def compute_similarity_matrices(audio_folder_path: str):
     return df
 
 
-def _get_df_from_two_wav_path_list(wav_file_paths_1, wav_file_paths_2, trial_data, trial_id: int):
+def _get_df_from_two_wav_path
+
+_list(wav_file_paths_1, wav_file_paths_2, trial_data, trial_id: int):
     n_files = len(wav_file_paths_1)
     for i in range(n_files):
         for j in range(n_files):
@@ -138,25 +143,32 @@ def save_embeddings(audio_folder_path: str):
 
 def save_embeddings_for_model(audio_folder_path: str, model_name: str, embedding_shape: dict):
     """Compute and save embeddings for all wav files in a folder using a specified model."""
-    os.makedirs(os.path.join("./embeddings", model_name), exist_ok=True)
+    os.makedirs(os.path.join("./embeddings_new", model_name), exist_ok=True)
     model = Speaker(model_name)
-    model.set_device("cuda" if torch.cuda.is_available() else "cpu")
     for lang in LANGUAGE_ORDER:
         for speaker in SPEAKER_ORDER:
-            for utt_num in [1, 2]:
-                wav_file_path = os.path.join(audio_folder_path, lang, f"{speaker}_{lang}_utt{utt_num}.wav")
-                embedding = model.extract_embedding(wav_file_path)
-                embedding_info = {
-                    'speaker': speaker,
-                    'language': lang,
-                    'utterance': f"utt{utt_num}",
-                    'embedding': embedding.cpu().numpy()  # Convert to numpy array for saving
-                }
-                
-                wav_file_name = Path(wav_file_path).stem
-                save_path = os.path.join("./embeddings", model_name, f"{wav_file_name}_embedding.pt")
-                torch.save(embedding_info, save_path)
-                print(f"Saved embeddings to {save_path}")
+            wav_file_path_1 = os.path.join(audio_folder_path, lang, f"{speaker}_{lang}_utt1.wav")
+            wav_file_path_2 = os.path.join(audio_folder_path, lang, f"{speaker}_{lang}_utt2.wav")
+            # Load files (librosa converts them to floating-point arrays)
+            data1, sr1 = librosa.load(wav_file_path_1)
+            data2, sr2 = librosa.load(wav_file_path_2)
+
+            # Ensure they have the same sample rate, then concatenate
+            if sr1 == sr2:
+                combined = np.concatenate((data1, data2))
+                sf.write("joined_file.wav", combined, sr1)
+
+            embedding = model.extract_embedding("joined_file.wav")
+            embedding_info = {
+                'speaker': speaker,
+                'language': lang,
+                'utterance': "utt_1_2",
+                'embedding': embedding.cpu().numpy()  # Convert to numpy array for saving
+            }
+            
+            save_path = os.path.join("./embeddings_new", model_name, f"{speaker}_{lang}_embedding.pt")
+            torch.save(embedding_info, save_path)
+            print(f"Saved embeddings to {save_path}")
     embedding_shape[model_name] = embedding.shape
     print(model_name, embedding.shape)
 
