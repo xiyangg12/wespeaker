@@ -20,14 +20,56 @@ import torchnet as tnt
 from wespeaker.dataset.dataset_utils import apply_cmvn, spec_aug
 
 
-def run_epoch(dataloader, epoch_iter, model, criterion, optimizer, scheduler,
-              margin_scheduler, epoch, logger, scaler, device, configs):
+def _prepare_features(batch, model, device, configs):
+    frontend_type = configs['dataset_args'].get('frontend', 'fbank')
+    if frontend_type == 'fbank':
+        features = batch['feat']  # (B,T,F)
+        features = features.float().to(device)
+    else:  # 's3prl'
+        wavs = batch['wav']  # (B,1,W)
+        wavs = wavs.squeeze(1).float().to(device)  # (B,W)
+        wavs_len = torch.LongTensor([wavs.shape[1]]).repeat(
+            wavs.shape[0]).to(device)  # (B)
+        with torch.cuda.amp.autocast(enabled=configs['enable_amp']):
+            features, _ = model.module.frontend(wavs, wavs_len)
+    return features
+
+
+def _forward_and_loss(features,
+                      targets,
+                      model,
+                      criterion,
+                      configs,
+                      apply_spec_aug=True):
+    with torch.cuda.amp.autocast(enabled=configs['enable_amp']):
+        # apply cmvn
+        if configs['dataset_args'].get('cmvn', True):
+            features = apply_cmvn(features,
+                                  **configs['dataset_args'].get(
+                                      'cmvn_args', {}))
+        # spec augmentation
+        if apply_spec_aug and configs['dataset_args'].get('spec_aug', False):
+            features = spec_aug(features,
+                                **configs['dataset_args']['spec_aug_args'])
+
+        outputs = model(features)  # (embed_a,embed_b) in most cases
+        embeds = outputs[-1] if isinstance(outputs, tuple) else outputs
+        outputs = model.projection(embeds, targets)
+        if isinstance(outputs, tuple):
+            outputs, loss = outputs
+        else:
+            loss = criterion(outputs, targets)
+    return outputs, loss
+
+
+def run_epoch_train(dataloader, epoch_iter, model, criterion, optimizer,
+                    scheduler, margin_scheduler, epoch, logger, scaler, device,
+                    configs):
     model.train()
     # By default use average pooling
     loss_meter = tnt.meter.AverageValueMeter()
     acc_meter = tnt.meter.ClassErrorMeter(accuracy=True)
 
-    frontend_type = configs['dataset_args'].get('frontend', 'fbank')
     for i, batch in enumerate(dataloader):
         cur_iter = (epoch - 1) * epoch_iter + i
         scheduler.step(cur_iter)
@@ -36,34 +78,14 @@ def run_epoch(dataloader, epoch_iter, model, criterion, optimizer, scheduler,
         utts = batch['key']
         targets = batch['label']
         targets = targets.long().to(device)  # (B)
-        if frontend_type == 'fbank':
-            features = batch['feat']  # (B,T,F)
-            features = features.float().to(device)
-        else:  # 's3prl'
-            wavs = batch['wav']  # (B,1,W)
-            wavs = wavs.squeeze(1).float().to(device)  # (B,W)
-            wavs_len = torch.LongTensor([wavs.shape[1]]).repeat(
-                wavs.shape[0]).to(device)  # (B)
-            with torch.cuda.amp.autocast(enabled=configs['enable_amp']):
-                features, _ = model.module.frontend(wavs, wavs_len)
+        features = _prepare_features(batch, model, device, configs)
 
-        with torch.cuda.amp.autocast(enabled=configs['enable_amp']):
-            # apply cmvn
-            if configs['dataset_args'].get('cmvn', True):
-                features = apply_cmvn(
-                    features, **configs['dataset_args'].get('cmvn_args', {}))
-            # spec augmentation
-            if configs['dataset_args'].get('spec_aug', False):
-                features = spec_aug(features,
-                                    **configs['dataset_args']['spec_aug_args'])
-
-            outputs = model(features)  # (embed_a,embed_b) in most cases
-            embeds = outputs[-1] if isinstance(outputs, tuple) else outputs
-            outputs = model.projection(embeds, targets)
-            if isinstance(outputs, tuple):
-                outputs, loss = outputs
-            else:
-                loss = criterion(outputs, targets)
+        outputs, loss = _forward_and_loss(features,
+                                          targets,
+                                          model,
+                                          criterion,
+                                          configs,
+                                          apply_spec_aug=True)
 
         # loss, acc
         loss_meter.add(loss.item())
@@ -94,3 +116,68 @@ def run_epoch(dataloader, epoch_iter, model, criterion, optimizer, scheduler,
             (loss_meter.value()[0], acc_meter.value()[0]),
             width=10,
             style='grid'))
+
+
+def run_epoch_eval(dataloader,
+                   epoch_iter,
+                   model,
+                   criterion,
+                   epoch,
+                   logger,
+                   device,
+                   configs,
+                   scheduler=None,
+                   margin_scheduler=None):
+    model.eval()
+    # By default use average pooling
+    loss_meter = tnt.meter.AverageValueMeter()
+    acc_meter = tnt.meter.ClassErrorMeter(accuracy=True)
+
+    with torch.no_grad():
+        for i, batch in enumerate(dataloader):
+            utts = batch['key']
+            targets = batch['label']
+            targets = targets.long().to(device)  # (B)
+            features = _prepare_features(batch, model, device, configs)
+
+            outputs, loss = _forward_and_loss(features,
+                                              targets,
+                                              model,
+                                              criterion,
+                                              configs,
+                                              apply_spec_aug=False)
+
+            # loss, acc
+            loss_meter.add(loss.item())
+            acc_meter.add(outputs.cpu().detach().numpy(),
+                          targets.cpu().numpy())
+
+            # log
+            if (i + 1) % configs['log_batch_interval'] == 0:
+                lr = scheduler.get_lr() if scheduler is not None else 0.0
+                margin = (margin_scheduler.get_margin()
+                          if margin_scheduler is not None else 0.0)
+                logger.info(
+                    tp.row((epoch, i + 1, lr, margin) +
+                           (loss_meter.value()[0], acc_meter.value()[0]),
+                           width=10,
+                           style='grid'))
+
+            if (i + 1) == epoch_iter:
+                break
+
+    lr = scheduler.get_lr() if scheduler is not None else 0.0
+    margin = (margin_scheduler.get_margin()
+              if margin_scheduler is not None else 0.0)
+    logger.info(
+        tp.row((epoch, i + 1, lr, margin) +
+               (loss_meter.value()[0], acc_meter.value()[0]),
+               width=10,
+               style='grid'))
+
+
+def run_epoch(dataloader, epoch_iter, model, criterion, optimizer, scheduler,
+              margin_scheduler, epoch, logger, scaler, device, configs):
+    run_epoch_train(dataloader, epoch_iter, model, criterion, optimizer,
+                    scheduler, margin_scheduler, epoch, logger, scaler, device,
+                    configs)

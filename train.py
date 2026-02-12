@@ -17,6 +17,7 @@ import json
 import os
 import re
 from pprint import pformat
+from pathlib import Path
 
 import fire
 import tableprint as tp
@@ -31,10 +32,12 @@ from wespeaker.frontend import *
 from wespeaker.models.projections import get_projection
 from wespeaker.models.speaker_model import get_speaker_model
 from wespeaker.utils.checkpoint import load_checkpoint, save_checkpoint
-from wespeaker.utils.executor import run_epoch
+from wespeaker.utils.executor import run_epoch, run_epoch_eval
 from wespeaker.utils.file_utils import read_table
 from wespeaker.utils.utils import get_logger, parse_config_or_kwargs, set_seed, \
     spk2id
+
+
 
 
 def create_wespeaker_list(scp_file, utt2spk_file, output_file):
@@ -53,7 +56,7 @@ def create_wespeaker_list(scp_file, utt2spk_file, output_file):
 
 
 
-def train(config='conf/config.yaml', **kwargs):
+def train(config: str, **kwargs):
     """Trains a model on the given features and spk labels.
 
     :config: A training configuration. Note that all parameters in the
@@ -62,10 +65,10 @@ def train(config='conf/config.yaml', **kwargs):
     """
     configs = parse_config_or_kwargs(config, **kwargs)
     checkpoint = configs.get('checkpoint', None)
-    model_dir = "finetuning_models"
-
-    os.makedirs(model_dir, exist_ok=True)
+    model_dir = os.path.join(configs['exp_dir'], 'models')
+    
     os.makedirs(configs['exp_dir'], exist_ok=True)
+    os.makedirs(model_dir, exist_ok=True)
     logger = get_logger(configs['exp_dir'], 'train.log')
     # seed
     set_seed(configs['seed'])
@@ -90,7 +93,15 @@ def train(config='conf/config.yaml', **kwargs):
                             spk2id_dict,
                             reverb_lmdb_file=configs.get('reverb_data', None),
                             noise_lmdb_file=configs.get('noise_data', None))
+    
+    val_dataset = Dataset(configs['data_type'],
+                            configs['cv_data'],
+                            configs['dataset_args'],
+                            spk2id_dict,
+                            reverb_lmdb_file=configs.get('reverb_data', None),
+                            noise_lmdb_file=configs.get('noise_data', None))
     train_dataloader = DataLoader(train_dataset, **configs['dataloader_args'])
+    val_dataloader = DataLoader(val_dataset, **configs['dataloader_args'])
     batch_size = configs['dataloader_args']['batch_size']
     if configs['dataset_args'].get('sample_num_per_epoch', 0) > 0:
         sample_num_per_epoch = configs['dataset_args']['sample_num_per_epoch']
@@ -203,17 +214,28 @@ def train(config='conf/config.yaml', **kwargs):
         train_dataset.set_epoch(epoch)
 
         run_epoch(train_dataloader,
-                  epoch_iter,
-                  model,
-                  criterion,
-                  optimizer,
-                  scheduler,
-                  margin_scheduler,
-                  epoch,
-                  logger,
-                  scaler,
-                  device=device,
-                  configs=configs)
+                epoch_iter,
+                model,
+                criterion,
+                optimizer,
+                scheduler,
+                margin_scheduler,
+                epoch,
+                logger,
+                scaler,
+                device=device,
+                configs=configs)
+        
+        print("Evaluating on validation set ...")
+        run_epoch_eval(val_dataloader,
+                epoch_iter,
+                model,
+                criterion,
+                epoch,
+                logger,
+                device=device,
+                configs=configs
+            )
 
         if rank == 0:
             if epoch % configs['save_epoch_interval'] == 0 or epoch > configs[
@@ -228,5 +250,11 @@ def train(config='conf/config.yaml', **kwargs):
         logger.info(tp.bottom(len(header), width=10, style='grid'))
 
 
+def train_multiple_models(**kwargs):
+    root_path = Path('/home/yifa/xiyang/wespeaker/models')
+    config_list = [str(file) for file in root_path.glob('*.yaml')]
+    for config in config_list:
+        train(config, **kwargs)
+
 if __name__ == '__main__':
-    fire.Fire(train)
+    train_multiple_models()

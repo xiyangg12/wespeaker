@@ -1,6 +1,6 @@
 ### train configuraton
 
-exp_dir: exp/resnet34
+exp_dir: exp/cnceleb_resnet34
 gpus: "[0]"
 num_avg: 10
 enable_amp: False # whether enable automatic mixed precision training
@@ -22,8 +22,8 @@ cv_label: 'dataset/dev_utt2spk'   # The validation label mapping
 
 
 seed: 42
-num_epochs: 10
-save_epoch_interval: 1 # save model every 5 epochs
+num_epochs: 5
+save_epoch_interval: 1 # save model every 1 epochs
 log_batch_interval: 100 # log every 100 batchs
 
 dataloader_args:
@@ -62,7 +62,7 @@ dataset_args:
     prob: 0.6
 
 model: ResNet34 # ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
-model_init: /home/yifa/xiyang/wespeaker/voxceleb_resnet34/avg_model.pt
+model_init: /home/yifa/xiyang/wespeaker/models/cnceleb_resnet34/avg_model.pt
 model_args:
   feat_dim: 80
   embed_dim: 256
@@ -94,7 +94,7 @@ optimizer_args:
 
 scheduler: ExponentialDecrease
 scheduler_args:
-  initial_lr: 0.01
+  initial_lr: 0.0005
   final_lr: 0.00005
   warm_up_epoch: 6
   warm_from_zero: True
