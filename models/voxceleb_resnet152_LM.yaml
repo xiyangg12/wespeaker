@@ -8,11 +8,11 @@ enable_amp: False # whether enable automatic mixed precision training
 ### dataset setting
 data_type: shard
 
-# train_data: /home/yifa/xiyang/wespeaker/dataset/train/wav.scp
-# train_label: /home/yifa/xiyang/wespeaker/dataset/train/utt2spk
+# train_data: dataset/train/wav.scp
+# train_label: dataset/train/utt2spk
 
-# cv_data: /home/yifa/xiyang/wespeaker/dataset/dev/wav.scp
-# cv_label: /home/yifa/xiyang/wespeaker/dataset/dev/utt2spk
+# cv_data: dataset/dev/wav.scp
+# cv_label: dataset/dev/utt2spk
 
 data_type: 'raw'
 train_data: 'dataset/train.list'   # The JSON manifest we created
@@ -62,7 +62,7 @@ dataset_args:
     prob: 0.6
 
 model: ResNet152 # ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
-model_init: /home/yifa/xiyang/wespeaker/models/voxceleb_resnet152_LM/avg_model.pt
+model_init: models/voxceleb_resnet152_LM/avg_model.pt
 model_args:
   feat_dim: 80
   embed_dim: 256

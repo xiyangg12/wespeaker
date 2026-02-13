@@ -8,11 +8,11 @@ enable_amp: False # whether enable automatic mixed precision training
 ### dataset setting
 data_type: shard
 
-# train_data: /home/yifa/xiyang/wespeaker/dataset/train/wav.scp
-# train_label: /home/yifa/xiyang/wespeaker/dataset/train/utt2spk
+# train_data: dataset/train/wav.scp
+# train_label: dataset/train/utt2spk
 
-# cv_data: /home/yifa/xiyang/wespeaker/dataset/dev/wav.scp
-# cv_label: /home/yifa/xiyang/wespeaker/dataset/dev/utt2spk
+# cv_data: dataset/dev/wav.scp
+# cv_label: dataset/dev/utt2spk
 
 data_type: 'raw'
 train_data: 'dataset/train.list'   # The JSON manifest we created
@@ -62,12 +62,9 @@ dataset_args:
     prob: 0.6
 
 model: SimAM_ResNet100_ASP # ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
-model_init: /home/yifa/xiyang/wespeaker/models/voxblink2_samresnet100/avg_model.pt
+model_init: models/voxblink2_samresnet100/avg_model.pt
 model_args:
-  feat_dim: 80
   embed_dim: 256
-  pooling_func: "TSTP" # TSTP, ASTP, MQMHASTP
-  two_emb_layer: False
 projection_args:
   project_type: "arc_margin" # add_margin, arc_margin, sphere, sphereface2, softmax, arc_margin_intertopk_subcenter
   scale: 32.0
