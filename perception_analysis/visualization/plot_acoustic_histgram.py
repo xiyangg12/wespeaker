@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 
 from perception_analysis.data_file_paths import RSA_BARPANELS_PATH, RSA_RESULTS_BY_CATEGORY_PATH
 
-# ─── SETTINGS ────────────────────────────────────────────────────────────────
-
 # mapping from raw variable names to display labels
 BASE_LABELS = {
     "AR_mean":     r"AR",
