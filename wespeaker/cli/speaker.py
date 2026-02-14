@@ -309,7 +309,7 @@ def load_model_pt(model_name_or_path: str):
        - avg_model.pt: the pytorch model file
     """
     model_dir = load_or_download(model_name_or_path)
-    required_files = ['config.yaml', 'avg_model.pt']
+    required_files = ['config.yaml', 'model_5.pt']
     for file in required_files:
         if not os.path.exists(os.path.join(model_dir, file)):
             raise FileNotFoundError(f"{file} not found in {model_dir}")
@@ -329,7 +329,7 @@ def load_model_pt(model_name_or_path: str):
             **config['dataset_args'][frontend_args],
             sample_rate=config['dataset_args']['resample_rate'])
         model.add_module("frontend", frontend)
-    load_checkpoint(model, os.path.join(model_dir, 'avg_model.pt'))
+    load_checkpoint(model, os.path.join(model_dir, 'model_5.pt'))
     model.eval()
     model.frontend_type = frontend_type
     return model

@@ -8,24 +8,17 @@ import soundfile as sf
 import numpy as np
 
 MODEL_NAME_LIST = [
-    'cnceleb_resnet34',
-    'cnceleb_resnet34_LM',
-    'voxceleb_ECAPA1024',
-    'voxceleb_ECAPA1024_LM',
-    'voxceleb_ECAPA512',
-    'voxceleb_ECAPA512_LM',
-    'voxceleb_ecapa512_dino',
-    'voxceleb_CAM++',
-    'voxceleb_CAM++_LM',
-    'voxceleb_resnet34',
-    'voxceleb_resnet34_LM',
-    'voxblink2_samresnet34',
-    'voxblink2_samresnet34_ft',
-    'voxblink2_samresnet100',
-    'voxblink2_samresnet100_ft',
-    'voxceleb_resnet152_LM',
-    'voxceleb_resnet221_LM',
-    'voxceleb_resnet293_LM'
+    "/home/xiyali/git/wespeaker/exp/cnceleb_resnet34/models",
+    "/home/xiyali/git/wespeaker/exp/cnceleb_resnet34_LM/models",
+    "/home/xiyali/git/wespeaker/exp/voxblink2_samresnet34/models",
+    "/home/xiyali/git/wespeaker/exp/voxblink2_samresnet34_ft/models",
+    "/home/xiyali/git/wespeaker/exp/voxblink2_samresnet100/models",
+    "/home/xiyali/git/wespeaker/exp/voxblink2_samresnet100_ft/models",
+    "/home/xiyali/git/wespeaker/exp/voxceleb_resnet34/models",
+    "/home/xiyali/git/wespeaker/exp/voxceleb_resnet34_LM/models",
+    "/home/xiyali/git/wespeaker/exp/voxceleb_resnet152_LM/models",
+    "/home/xiyali/git/wespeaker/exp/voxceleb_resnet221_LM/models",
+    "/home/xiyali/git/wespeaker/exp/voxceleb_resnet293_LM/models"
 ]
 
 SPEAKER_ORDER = ["VF19B", "VF19D", "VF21A", "VF21B", "VF21C", "VF21D", "VF23B", "VF23C", "VF26A", "VF32A"]
@@ -92,9 +85,7 @@ def compute_similarity_matrices(audio_folder_path: str):
     return df
 
 
-def _get_df_from_two_wav_path
-
-_list(wav_file_paths_1, wav_file_paths_2, trial_data, trial_id: int):
+def _get_df_from_two_wav_path_list(wav_file_paths_1, wav_file_paths_2, trial_data, trial_id: int):
     n_files = len(wav_file_paths_1)
     for i in range(n_files):
         for j in range(n_files):
@@ -132,7 +123,7 @@ _list(wav_file_paths_1, wav_file_paths_2, trial_data, trial_id: int):
 
 def save_embeddings(audio_folder_path: str):
     """Compute and save embeddings for all wav files in a folder using multiple models."""
-    os.makedirs("./embeddings", exist_ok=True)
+    os.makedirs("embeddings", exist_ok=True)
     embedding_shape = {}
     for model_name in MODEL_NAME_LIST:
         save_embeddings_for_model(audio_folder_path, model_name, embedding_shape)
@@ -143,8 +134,9 @@ def save_embeddings(audio_folder_path: str):
 
 def save_embeddings_for_model(audio_folder_path: str, model_name: str, embedding_shape: dict):
     """Compute and save embeddings for all wav files in a folder using a specified model."""
-    os.makedirs(os.path.join("./embeddings_new", model_name), exist_ok=True)
     model = Speaker(model_name)
+    model_name = Path(model_name).parts[-2]
+    os.makedirs(os.path.join("embeddings", model_name), exist_ok=True)
     for lang in LANGUAGE_ORDER:
         for speaker in SPEAKER_ORDER:
             wav_file_path_1 = os.path.join(audio_folder_path, lang, f"{speaker}_{lang}_utt1.wav")
@@ -166,7 +158,7 @@ def save_embeddings_for_model(audio_folder_path: str, model_name: str, embedding
                 'embedding': embedding.cpu().numpy()  # Convert to numpy array for saving
             }
             
-            save_path = os.path.join("./embeddings_new", model_name, f"{speaker}_{lang}_embedding.pt")
+            save_path = os.path.join("embeddings", model_name, f"{speaker}_{lang}_embedding.pt")
             torch.save(embedding_info, save_path)
             print(f"Saved embeddings to {save_path}")
     embedding_shape[model_name] = embedding.shape
@@ -174,9 +166,9 @@ def save_embeddings_for_model(audio_folder_path: str, model_name: str, embedding
 
 
 def main():
-    audio_folder = '/home/yifa/xiyang/stim'
+    audio_folder = '/home/xiyali/git/wespeaker/stim'
     
-    # compute_similarity_matrices(audio_folder)
+    compute_similarity_matrices(audio_folder)
 
     save_embeddings(audio_folder)
 

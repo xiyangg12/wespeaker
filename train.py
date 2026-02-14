@@ -251,7 +251,7 @@ def train(config: str, **kwargs):
 
 
 def train_multiple_models(**kwargs):
-    root_path = Path('/home/yifa/xiyang/wespeaker/models')
+    root_path = Path('models')
     config_list = [str(file) for file in root_path.glob('*.yaml')]
     for config in config_list:
         train(config, **kwargs)
