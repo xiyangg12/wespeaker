@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from data_file_paths import RSA_BARPANELS_PATH, RSA_RESULTS_BY_CATEGORY_PATH
+from perception_analysis.data_file_paths import RSA_BARPANELS_PATH, RSA_RESULTS_BY_CATEGORY_PATH
 
 # ─── SETTINGS ────────────────────────────────────────────────────────────────
 

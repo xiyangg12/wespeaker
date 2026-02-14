@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr, wilcoxon
 from collections import defaultdict
-from data_file_paths import HUMAN_RDM_PATH, RDM_OUTPUT_DIR, RSA_RESULTS_BY_CATEGORY_PATH, RSA_RESULTS_PATH, ACOUSTIC_RDM_PATH
+from perception_analysis.data_file_paths import HUMAN_RDM_PATH, RDM_OUTPUT_DIR, RSA_RESULTS_BY_CATEGORY_PATH, RSA_RESULTS_PATH, ACOUSTIC_RDM_PATH
 from statsmodels.stats.multitest import fdrcorrection
 
 
