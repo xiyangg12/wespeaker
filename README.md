@@ -1,4 +1,14 @@
-# WeSpeaker
+# WeSpeaker Study Fork
+
+This repository is a research fork of
+[wenet-e2e/wespeaker](https://github.com/wenet-e2e/wespeaker). It keeps the
+original WeSpeaker toolkit as the base and adds scripts for perception-oriented
+analysis of speaker-embedding models.
+
+The upstream project is a research and production toolkit for speaker embedding
+learning and speaker verification. This fork is intended to make the study code,
+analysis workflow, and local modifications public while preserving credit to the
+original WeSpeaker authors.
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python-Version](https://img.shields.io/badge/Python-3.8%7C3.9-brightgreen)](https://github.com/wenet-e2e/wespeaker)
@@ -11,6 +21,61 @@
 | [**Huggingface Demo**](https://huggingface.co/spaces/wenet/wespeaker_demo)
 | [**Modelscope Demo**](https://www.modelscope.cn/studios/wenet/Speaker_Verification_in_WeSpeaker/summary)
 
+## About This Fork
+
+This fork adds a `perception_analysis/` workflow for studying how model-derived
+speaker similarities relate to human perceptual judgments and acoustic
+representational dissimilarity matrices (RDMs).
+
+Added study components include:
+
+* RDM generation from model similarity outputs:
+  `perception_analysis/percept_analysis_models/compute_percept_rdm.py`
+* RSA summaries between model, human, and acoustic RDMs:
+  `perception_analysis/percept_analysis_models/compute_rsa_from_rdms.py`
+* Category-level RSA summaries:
+  `perception_analysis/percept_analysis_models/compute_rsa_by_category_from_rdms.py`
+* Visualization utilities for RDMs and acoustic distributions:
+  `perception_analysis/visualization/`
+* CSV column cleanup utilities:
+  `perception_analysis/modify_csv_columns.py`
+
+The analysis paths are configured in
+`perception_analysis/data_file_paths.py`. Update the placeholder paths in that
+file before running the analysis scripts on your own data.
+
+## Repository Relationship
+
+* Fork: `https://github.com/xiyangg12/wespeaker`
+* Upstream: `https://github.com/wenet-e2e/wespeaker`
+
+To keep this fork synchronized with upstream:
+
+``` sh
+git remote add upstream https://github.com/wenet-e2e/wespeaker.git
+git fetch upstream
+git merge upstream/master
+```
+
+## Quick Start for This Fork
+
+``` sh
+git clone https://github.com/xiyangg12/wespeaker.git
+cd wespeaker
+conda create -n wespeaker python=3.9
+conda activate wespeaker
+conda install pytorch=1.12.1 torchaudio=0.12.1 cudatoolkit=11.3 -c pytorch -c conda-forge
+pip install -r requirements.txt
+```
+
+Then configure local data paths in `perception_analysis/data_file_paths.py` and
+run the relevant analysis script, for example:
+
+``` sh
+python perception_analysis/percept_analysis_models/compute_percept_rdm.py
+```
+
+## Original WeSpeaker Project
 
 WeSpeaker mainly focuses on [**speaker embedding learning**](https://wsstriving.github.io/talk/ncmmsc_slides_shuai.pdf), with application to the speaker verification task. We support
 online feature extraction or loading pre-extracted features in kaldi-format.
@@ -49,7 +114,7 @@ Please refer to [python usage](docs/python_package.md) for more command line and
 ### Install for development & deployment
 * Clone this repo
 ``` sh
-git clone https://github.com/wenet-e2e/wespeaker.git
+git clone https://github.com/xiyangg12/wespeaker.git
 ```
 
 * Create conda env: pytorch version >= 1.12.1 is recommended !!!
