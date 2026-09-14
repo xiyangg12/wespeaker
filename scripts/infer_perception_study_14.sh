@@ -29,6 +29,8 @@ Environment overrides:
                                  (default: repository root)
   WESPEAKER_PRETRAINED_CHECKPOINT  Pretrained checkpoint name
                                  (default: avg_model.pt)
+  WESPEAKER_REPO_ROOT            WeSpeaker checkout path. Normally detected
+                                 from SLURM_SUBMIT_DIR when submitted by Slurm.
 
 Example:
   mkdir -p logs
@@ -50,8 +52,30 @@ OUTPUT_ROOT=$3
 shift 3
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-REPO_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd)
-SOURCE_SCP="$REPO_ROOT/manifests/perception_study_14.wav.scp"
+MANIFEST_RELATIVE_PATH=manifests/perception_study_14.wav.scp
+FINETUNED_MODEL_PARENT=$(dirname -- "$FINETUNED_MODEL_ROOT")
+if [[ -n "${WESPEAKER_REPO_ROOT:-}" ]]; then
+  REPO_ROOT=$WESPEAKER_REPO_ROOT
+elif [[ -n "${SLURM_SUBMIT_DIR:-}" && \
+        -f "$SLURM_SUBMIT_DIR/$MANIFEST_RELATIVE_PATH" ]]; then
+  # sbatch executes a spool copy under /var/spool/slurmd, so BASH_SOURCE does
+  # not identify the checkout. SLURM_SUBMIT_DIR is the directory from which
+  # sbatch was invoked.
+  REPO_ROOT=$SLURM_SUBMIT_DIR
+elif [[ -f "$FINETUNED_MODEL_PARENT/$MANIFEST_RELATIVE_PATH" ]]; then
+  # The normal second argument is <repository>/exp, making its parent another
+  # reliable way to recover the checkout when sbatch was launched elsewhere.
+  REPO_ROOT=$FINETUNED_MODEL_PARENT
+else
+  REPO_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd)
+fi
+
+if [[ ! -d "$REPO_ROOT" ]]; then
+  echo "WeSpeaker repository root does not exist: $REPO_ROOT" >&2
+  exit 1
+fi
+REPO_ROOT=$(cd -- "$REPO_ROOT" && pwd)
+SOURCE_SCP="$REPO_ROOT/$MANIFEST_RELATIVE_PATH"
 
 CONDA_ENV=${WESPEAKER_CONDA_ENV:-wespeaker}
 DEVICE=${WESPEAKER_DEVICE:-cuda:0}
