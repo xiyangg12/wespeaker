@@ -99,6 +99,7 @@ class Speaker:
                 feat = feat - torch.mean(feat, dim=0)
             feat = feat.unsqueeze(0)  # [1, T, D]
         else:
+            wavform = wavform.to(self.device)
             wavform_lens = torch.LongTensor([wavform.shape[1]]).repeat(
                 wavform.shape[0]).to(self.device)
             with torch.no_grad():
@@ -160,6 +161,7 @@ class Speaker:
         feats = self.compute_features(pcm,
                                       sample_rate=self.resample_rate,
                                       cmn=True)
+        feats = feats.to(self.device)
         with torch.no_grad():
             outputs = self.model(feats)
             outputs = outputs[-1] if isinstance(outputs, tuple) else outputs
