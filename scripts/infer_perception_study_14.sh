@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=wespeaker_infer_p14
+#SBATCH --job-name=wespeaker_infer
 #SBATCH --gpus=1
 #SBATCH --mem=16G
 #SBATCH --time=02:00:00
-#SBATCH --output=logs/wespeaker_infer_p14_%j.out
+#SBATCH --output=logs/wespeaker_infer_%j.out
 
 set -euo pipefail
 
@@ -15,7 +15,8 @@ Usage:
     DATASET_ROOT FINETUNED_MODEL_ROOT OUTPUT_ROOT [MODEL_NAME ...]
 
 Arguments:
-  DATASET_ROOT           Cluster path containing per_speaker/, stimuli.tsv, etc.
+  DATASET_ROOT           Cluster directory containing the audio paths named in
+                         the selected SCP manifest.
   FINETUNED_MODEL_ROOT   Path containing the eleven fine-tuned experiment trees.
                          This is normally the repository's exp/ directory.
   OUTPUT_ROOT            Directory in which per-model .ark/.scp files are saved.
@@ -31,6 +32,9 @@ Environment overrides:
                                  (default: avg_model.pt)
   WESPEAKER_REPO_ROOT            WeSpeaker checkout path. Normally detected
                                  from SLURM_SUBMIT_DIR when submitted by Slurm.
+  WESPEAKER_WAV_SCP              SCP manifest to use. May be an absolute path
+                                 or a path relative to the repository. Defaults
+                                 to manifests/perception_study_14.wav.scp.
 
 Example:
   mkdir -p logs
@@ -75,7 +79,10 @@ if [[ ! -d "$REPO_ROOT" ]]; then
   exit 1
 fi
 REPO_ROOT=$(cd -- "$REPO_ROOT" && pwd)
-SOURCE_SCP="$REPO_ROOT/$MANIFEST_RELATIVE_PATH"
+SOURCE_SCP=${WESPEAKER_WAV_SCP:-$REPO_ROOT/$MANIFEST_RELATIVE_PATH}
+if [[ "$SOURCE_SCP" != /* ]]; then
+  SOURCE_SCP="$REPO_ROOT/$SOURCE_SCP"
+fi
 
 CONDA_ENV=${WESPEAKER_CONDA_ENV:-wespeaker}
 DEVICE=${WESPEAKER_DEVICE:-cuda:0}
@@ -156,8 +163,8 @@ while read -r utterance relative_audio; do
   ((expected_count += 1))
 done < "$SOURCE_SCP"
 
-if (( expected_count != 56 )); then
-  echo "Expected 56 utterances, found $expected_count in $SOURCE_SCP" >&2
+if (( expected_count == 0 )); then
+  echo "No utterances found in $SOURCE_SCP" >&2
   exit 1
 fi
 
@@ -234,7 +241,7 @@ for model_name in "${MODEL_NAMES[@]}"; do
   ln -sfn "$config" "$bundle_dir/config.yaml"
   ln -sfn "$checkpoint" "$bundle_dir/model_5.pt"
 
-  echo "[$model_name] extracting 56 embeddings from $model_kind model"
+  echo "[$model_name] extracting $expected_count embeddings from $model_kind model"
   (
     cd -- "$DATASET_ROOT"
     python3 -m wespeaker.cli.speaker \
