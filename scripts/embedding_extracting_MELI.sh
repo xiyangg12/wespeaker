@@ -122,14 +122,14 @@ if [[ ! -f "$SOURCE_SCP" ]]; then
 fi
 
 expected_count=0
-declare -A seen_utterances=()
+duplicate_utterance=$(awk 'NF && seen[$1]++ { print $1; exit }' "$SOURCE_SCP")
+if [[ -n "$duplicate_utterance" ]]; then
+  echo "Duplicate utterance ID in manifest: $duplicate_utterance" >&2
+  exit 1
+fi
+
 while read -r utterance relative_audio; do
   [[ -n "$utterance" ]] || continue
-  if [[ -n "${seen_utterances[$utterance]:-}" ]]; then
-    echo "Duplicate utterance ID in manifest: $utterance" >&2
-    exit 1
-  fi
-  seen_utterances[$utterance]=1
   if [[ ! -f "$DATASET_ROOT/$relative_audio" ]]; then
     echo "Missing audio for $utterance: $DATASET_ROOT/$relative_audio" >&2
     exit 1

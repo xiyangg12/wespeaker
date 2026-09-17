@@ -29,7 +29,6 @@ from wespeaker.cli.hub import Hub
 from wespeaker.cli.utils import get_args
 from wespeaker.models.speaker_model import get_speaker_model
 from wespeaker.utils.checkpoint import load_checkpoint
-from wespeaker.diar.umap_clusterer import cluster
 from wespeaker.diar.extract_emb import subsegment
 from wespeaker.diar.make_rttm import merge_segments
 from wespeaker.utils.utils import set_seed
@@ -253,6 +252,10 @@ class Speaker:
                                                        self.diar_subseg_cmn)
 
         # 4. cluster
+        # HDBSCAN is needed only for diarization. Import it lazily so embedding
+        # extraction does not depend on its compiled NumPy extension.
+        from wespeaker.diar.umap_clusterer import cluster
+
         subseg2label = []
         labels = cluster(embeddings)
         for (_subseg, _label) in zip(subsegs, labels):
